@@ -13,7 +13,7 @@ KalmanFilter::~KalmanFilter() {}
 
 void KalmanFilter::Init(Eigen::VectorXd &x_in, Eigen::MatrixXd &P_in, Eigen::MatrixXd &F_in,
     Eigen::MatrixXd &H_in, Eigen::MatrixXd &Hj_in, Eigen::MatrixXd &R_in,
-    Eigen::MatrixXd &R_ekf_in, Eigen::MatrixXd &Q_in);  {
+    Eigen::MatrixXd &R_ekf_in, Eigen::MatrixXd &Q_in)  {
       x_ = x_in;
       P_ = P_in;
       F_ = F_in;
@@ -47,24 +47,29 @@ void KalmanFilter::UpdateEKF(const VectorXd &z) {
   TODO:
     * update the state by using Extended Kalman Filter equations
   */
+  float px = x_[0];
+  float py = x_[1];
+  float vx = x_[2];
+  float vy = x_[3];
+
   float pos_x_2 = pow(x_[0],2);
   float pos_y_2 = pow(x_[1],2);
 
-  float ro = pow(pos_x_2+pos_y_2,0.5);
-  float theta = atan2(x_[0],x_[1]);
-  float ro_dot = (x_[0]*x_[2]+x_[1]*x_[3])/ro;
+  float ro = sqrt(px*px + py*py);
+  float phi = atan2(py,px);
+  float ro_dot = ( px*vx + py*vy )/ro;
 
-  Hj_ = tools.CalculateJacobian( x_ );
+  Hj_ = tools.CalculateJacobian(x_);
 
   VectorXd h_prime = VectorXd(3);
-  h_prime << ro, theta, ro_dot;
+  h_prime << ro, phi, ro_dot;
+
   VectorXd y = z - h_prime;
-  while (y[1]>M_PI) {
-    y[1]-2*M_PI;
-  }
-  while (y[1]<(-M_PI)) {
-    y[1]+2*M_PI;
-  }
+
+  if(y[1] > M_PI)
+    y[1] -= 2.f*M_PI;
+  if(y[1] < -M_PI)
+    y[1] += 2.f*M_PI;
 
   MatrixXd Ht = Hj_.transpose();
   MatrixXd S = Hj_*P_*Ht + R_ekf_;
